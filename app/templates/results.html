@@ -1,0 +1,11 @@
+<!-- extend from base layout -->
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Search Results</h1>
+    <ul>
+        {% for result in results %}
+            <iframe frameborder="0" scrolling="no" src="{{result}}" width="481" height="86"></iframe>
+        {% endfor %}
+    </ul>
+{% endblock %}

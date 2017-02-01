@@ -30,8 +30,8 @@ def create_embed(freesound_id):
 def results(query):
     # TODO: need a function for iterating through pages
     # ADD PAGINATION TO MY INTERFACE
+    # CONSIDER INDEXING METADATA AND ACOUSTIC FEATURES
     sounds = c.text_search(query=query, fields="id", page_size=20)
     results = [create_embed(s.id) for s in sounds]
-    print results
     return render_template('results.html',
                            results=results)

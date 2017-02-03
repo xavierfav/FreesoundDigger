@@ -6,7 +6,7 @@ from clustering import *
 
 
 # INIT FREESOUND CLIENT API
-#c = manager.Client()
+c = manager.Client()
 
 
 #@app.route("/")
@@ -52,14 +52,17 @@ def index():
 # EX FROM WEB
 @app.route('/_cluster')
 def cluster():
-    c = manager.Client()
+    #c = manager.Client()
     query = request.args.get('query', None, type=str)
     res = c.my_text_search(query=query, fields="tags,analysis", descriptors="lowlevel.mfcc.mean")
     b = c.new_basket()
     b.load_sounds(res)
     cluster = Cluster(basket=b)
     cluster.run()
-    return jsonify(result=cluster.ids_in_clusters)
+    dict_list = []
+    for k in range(len(cluster.tags_oc)):
+        dict_list.append([{"text":cluster.tags_oc[k][i][0], "size":60*cluster.tags_oc[k][i][1]} for i in range(len(cluster.tags_oc[k]))])
+    return jsonify(result=dict_list)
 
 @app.route('/cluster')
 def display():

@@ -178,6 +178,7 @@ class Cluster:
         normalized_tags_occurrences = []
         for idx, tag_occurrence in enumerate(tags_occurrences):
             normalized_tags_occurrences.append([(t_o[0], float(t_o[1])/len(self.cluster_baskets[idx].sounds)) for t_o in tag_occurrence])
+        self.tags_oc = normalized_tags_occurrences
         
         def print_basket(list_baskets, normalized_tags_occurrences, num_basket, max_tag = 20):
             """Print tag occurrences"""
@@ -195,7 +196,7 @@ class Cluster:
             
         for i in range(len(self.ids_in_clusters)):
                 print_basket(self.cluster_baskets, normalized_tags_occurrences, i, 10)
-
+        
     def plot(self):
         nx.draw(self.graph)
         plt.show()

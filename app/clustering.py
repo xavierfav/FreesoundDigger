@@ -10,6 +10,7 @@ import operator
 import sys, os
 import matplotlib.pyplot as plt
 from math import log10
+import copy
 
 # Disable print
 def blockPrint():
@@ -91,10 +92,11 @@ class Cluster:
                 
     def extract_text_features(self, basket=None):
         basket = basket or self.basket
-        t = basket.preprocessing_tag() #some stemming 
+        preproc_basket = copy.deepcopy(basket)
+        t = preproc_basket.preprocessing_tag() #some stemming 
         for idx, tt in enumerate(t):
-            basket.sounds[idx].tags = tt
-        nlp = manager.Nlp(basket) # counting terms...
+            preproc_basket.sounds[idx].tags = tt
+        nlp = manager.Nlp(preproc_basket) # counting terms...
         nlp.create_sound_tag_matrix() # create the feature vectors
         self.text_features = nlp.sound_tag_matrix
         

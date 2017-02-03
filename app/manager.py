@@ -15,7 +15,7 @@ from api_key import token
 # create table for metadata (or use the freesound one)
 # create table for acoustic descritors
 # OR
-# call Solr 
+# call Solr
 
 
 class Client(freesound.FreesoundClient):
@@ -543,6 +543,7 @@ class Basket:
     
     def preprocessing_tag(self):
         stemmer = PorterStemmer()
+        self.n_process_tags = [sound.tags for sound in self.sounds]
         return [[stemmer.stem(tag.lower()) for tag in sound.tags] for sound in self.sounds]
     
     def preprocessing_doc2vec(self):

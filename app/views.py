@@ -58,7 +58,7 @@ def cluster():
     b = c.new_basket()
     b.load_sounds(res)
     cluster = Cluster(basket=b)
-    cluster.run()
+    cluster.run(k_nn=res.count/50)
     dict_list = []
     for k in range(len(cluster.tags_oc)):
         dict_list.append([{"text":cluster.tags_oc[k][i][0], "size":60*cluster.tags_oc[k][i][1]} for i in range(len(cluster.tags_oc[k]))])

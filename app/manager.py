@@ -12,8 +12,10 @@ from api_key import token
 
 # TODO:add imports
 # create functions for geting metadata from db
-# create db for metadata (or use the freesound one)
-# create db for acoustic descritors
+# create table for metadata (or use the freesound one)
+# create table for acoustic descritors
+# OR
+# call Solr 
 
 
 class Client(freesound.FreesoundClient):

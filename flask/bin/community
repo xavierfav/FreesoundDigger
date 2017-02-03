@@ -1,0 +1,4 @@
+#!/home/xavier/Documents/dev/FreesoundDigger/flask/bin/python
+# EASY-INSTALL-SCRIPT: 'python-louvain==0.4','community'
+__requires__ = 'python-louvain==0.4'
+__import__('pkg_resources').run_script('python-louvain==0.4', 'community')

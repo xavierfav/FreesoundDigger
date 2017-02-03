@@ -61,3 +61,6 @@ def cluster():
     cluster.run()
     return jsonify(result=cluster.ids_in_clusters)
 
+@app.route('/cluster')
+def display():
+    return render_template('clusters2.html')

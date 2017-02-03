@@ -1,4 +1,15 @@
 import freesound
+import subprocess
+import ast
+import simplejson
+import scipy
+from scipy import spatial
+import networkx as nx
+from nltk.stem.porter import PorterStemmer
+from stop_words import get_stop_words
+from sklearn.metrics.pairwise import cosine_similarity
+from api_key import token
+
 # TODO:add imports
 # create functions for geting metadata from db
 # create db for metadata (or use the freesound one)
@@ -6,6 +17,11 @@ import freesound
 
 
 class Client(freesound.FreesoundClient):
+    def __init__(self, authentication=True):
+        if authentication:
+            self.set_token(token)
+            #self._init_oauth()
+            
     def my_text_search(self, **param):
         """
         Call text_search method from freesound.py and add all the defaults fields and page size parameters
@@ -14,6 +30,8 @@ class Client(freesound.FreesoundClient):
         >>> import manager
         >>> c = manager.Client()
         >>> result = c.my_text_search(query="wind")
+        
+        TYPICAL USE: res = c.my_text_search(query='wind', fields="tags,analysis", descriptors="lowlevel.mfcc.mean")
         """
         
         fields = 'id,'
@@ -42,7 +60,83 @@ class Client(freesound.FreesoundClient):
 
         return sound
     
+    def new_basket(self):
+        """
+        Create a new Basket
+        """
+        basket = Basket(self)
+        return basket
+    
+    def _init_oauth(self):
+        try:
+            import api_key
+            reload(api_key)
+            client_id = api_key.client_id
+            token = api_key.token
+            refresh_oauth = api_key.refresh_oauth
 
+            print ' Authenticating:\n'
+
+            req = 'curl -X POST -d "client_id=' + client_id + '&client_secret=' + token + \
+                  '&grant_type=refresh_token&refresh_token=' + refresh_oauth + '" ' + \
+                  '"https://www.freesound.org/apiv2/oauth2/access_token/"'
+
+            output = subprocess.check_output(req, shell=True)
+            output = ast.literal_eval(output)
+            access_oauth = output['access_token']
+            refresh_oauth = output['refresh_token']
+
+            self._write_api_key(client_id, token, access_oauth, refresh_oauth)
+            self.token = token
+            self.client_id = client_id
+            self.access_oauth = access_oauth
+
+        except ImportError:
+            client_id = raw_input('Enter your client id: ')
+            token = raw_input('Enter your api key: ')
+            code = raw_input('Please go to: https://www.freesound.org/apiv2/oauth2/authorize/?client_id=' + client_id + \
+                  '&response_type=code&state=xyz and enter the ginve code: ')
+
+            print '\n Authenticating:\n'
+
+            req = 'curl -X POST -d "client_id=' + client_id + '&client_secret=' + token + \
+                  '&grant_type=authorization_code&code=' + code + '" ' + \
+                  '"https://www.freesound.org/apiv2/oauth2/access_token/"'
+
+            output = subprocess.check_output(req, shell=True)
+            output = ast.literal_eval(output)
+            access_oauth = output['access_token']
+            refresh_oauth = output['refresh_token']
+
+            self._write_api_key(client_id, token, access_oauth, refresh_oauth)
+            self.token = token
+            self.client_id = client_id
+            self.access_oauth = access_oauth
+
+        except:
+            print 'Could not authenticate'
+            return
+
+        self._set_oauth()
+        print '\n Congrats ! Your are now authenticated \n'
+
+    @staticmethod
+    def _write_api_key(client_id, token, access_oauth, refresh_oauth):
+        file = open('api_key.py', 'w')
+        file.write('client_id = "' + client_id + '"')
+        file.write('\n')
+        file.write('token = "' + token + '"')
+        file.write('\n')
+        file.write('access_oauth = "' + access_oauth + '"')
+        file.write('\n')
+        file.write('refresh_oauth = "' + refresh_oauth + '"')
+        file.close()
+
+    def _set_oauth(self):
+        self.set_token(self.access_oauth, auth_type='oauth')
+
+    def _set_token(self):
+        self.set_token(self.token)
 
 #_________________________________________________________________#
 #                       Analysis class                            #
@@ -54,7 +148,7 @@ class Analysis():
     """
     def __init__(self, json_dict = None):
         if not json_dict:
-            with open('analysis_template.json') as infile:
+            with open('app/analysis_template.json') as infile:
                 json_dict = simplejson.load(infile)
 
         self.json_dict = json_dict
@@ -103,14 +197,16 @@ class Basket:
     TODO : add comments attribute, title...
     """
 
-    def __init__(self):
+    def __init__(self, client):
         self.sounds = []
         self.analysis = Analysis() # the use of the nested object is not rly good...
         self.analysis_stats = []
         self.analysis_stats_names = []
         self.ids = []
         self.analysis_names = []
-
+        self.parent_client = client
+        
+        
     def __add__(self, other):
         """
         Concatenate two baskets
@@ -168,14 +264,6 @@ class Basket:
         else:
             self.ids.append(None)
 
-    def push_list_id(self, sounds_id):
-        Bar = ProgressBar(len(sounds_id), LENGTH_BAR, 'Loading sounds')
-        Bar.update(0)
-        for idx, id in enumerate(sounds_id):
-            sound = self.parent_client.my_get_sound(id)
-            self.push(sound)
-            Bar.update(idx+1)
-
     def remove(self, index_list):
         index_list = sorted(index_list, reverse=True)
         for i in index_list:
@@ -195,91 +283,7 @@ class Basket:
                 list_idx_to_remove.append(idx)
         self.remove(list_idx_to_remove)
                 
-    def update_sounds(self):
-        """
-        Use this method to load the sounds which ids are in the basket
-        """
-        nbSound = len(self.ids)
-        Bar = ProgressBar(nbSound, LENGTH_BAR, 'Loading sounds')
-        Bar.update(0)
-        for i in range(nbSound):
-            self.sounds.append(self.parent_client.my_get_sound(self.ids[i]))
-            Bar.update(i+1)
-
-    def add_analysis(self, descriptor):
-        """
-        Use this method to add the analysis.
-        All the current loaded analysis will be erased
-        All the analysis of the loaded sound ids will be loaded
-
-        >>> results_pager = c.my_text_search(query='wind')
-        >>> b.load_sounds(results_pager)
-        >>> b.add_analysis('lowlevel.mfcc')
-        """
-        if descriptor in self.analysis_names:
-            print 'The %s analysis are already loaded' % descriptor
-        else:
-            nbSound = len(self.ids)
-            allFrames = []
-            Bar = ProgressBar(nbSound,LENGTH_BAR, 'Loading ' + descriptor + ' analysis')
-            Bar.update(0)
-            for i in range(nbSound):
-                allFrames.append(self.parent_client.my_get_analysis(self.ids[i], descriptor))
-                Bar.update(i+1)
-            self.analysis_names.append(descriptor)
-            self.analysis.rsetattr(descriptor, allFrames)
-
-    def update_analysis(self):
-        for nameAnalysis in self.analysis_names:
-            allFrames = self.analysis.rgetattr(nameAnalysis)
-            nbAnalysis = len(allFrames)
-            nbAnalysisToLoad = len(self.ids) - nbAnalysis
-            Bar = ProgressBar(nbAnalysisToLoad, LENGTH_BAR, 'Loading ' + nameAnalysis + ' analysis')
-            Bar.update(0)
-            for i in range(nbAnalysisToLoad):
-                Bar.update(i + 1)
-                allFrames.append(self.parent_client.my_get_analysis(self.ids[i+nbAnalysis], nameAnalysis))
-
-    def add_analysis_stats(self):
-        """
-        Use this method to add all analysis stats to all sounds in the basket
-        (means and var of descriptors)
-        """
-        #self.analysis_stats = []
-        nbSounds = len(self.sounds)
-        Bar = ProgressBar(nbSounds, LENGTH_BAR, 'Loading analysis stats')
-        Bar.update(0)
-        for i, sound in enumerate(self.sounds):
-            Bar.update(i + 1)
-            if sound is not None:
-                analysis = self.parent_client.my_get_analysis_stats(sound.id)
-                self.analysis_stats[i] = analysis
-            else:
-                self.analysis_stats[i] = None # HERE CHANGED APPEND TO I, is it ok ?
-                # try:
-                #     self.analysis_stats.append(sound.get_analysis())
-                # except freesound.FreesoundException:
-                #     pass
-
-	# FUNCTION FOR ADDING STATS OF ONLY ONE ANALYSIS
-    def add_one_analysis_stats(self, descriptor):
-        nbSounds = len(self.sounds)
-        Bar = ProgressBar(nbSounds, LENGTH_BAR, 'Loading analysis stats')
-        Bar.update(0)
-        for i, sound in enumerate(self.sounds):
-            Bar.update(i + 1)
-            if sound is not None:
-                analysis = self.parent_client.my_get_one_analysis_stats(sound.id, descriptor)
-                self.analysis_stats[i] = analysis
-            else:
-                self.analysis_stats[i] = None
-		
-    def remove_analysis(self, descriptor):
-        if descriptor in self.analysis_names:
-            self.analysis.remove('all', descriptor)
-            self.analysis_names.remove(descriptor)
-
-    def load_sounds_(self, results_pager, begin_idx=0, debugger=None):
+    def load_sounds(self, results_pager, begin_idx=0, debugger=None):
         """ 
         IN PROGRESS
         This function is used when the data to load in the basket is in the pager (and not just the id like for the next function)
@@ -386,116 +390,7 @@ class Basket:
             return preprocessing.scale(feature_vector)
         else:
             return feature_vector
-        
-    
-    def load_sounds(self, results_pager, begin_idx=0, debugger=None):
-        """
-        Use this method to load all the sounds from a result pager int the basket
-        this method does not take the objects from the pager but usgin my_get_sound() which return a sound with all the fields
 
-        >>> results_pager = c.my_text_search(query='wind')
-        >>> b.load_sounds(results_pager)
-        """
-        nbSound = results_pager.count
-        numSound = begin_idx # for iteration
-        results_pager_last = results_pager
-        Bar = ProgressBar(nbSound,LENGTH_BAR,'Loading sounds')
-        Bar.update(0)
-        # 1st iteration                              # maybe there is a better way to iterate through pages...
-        for i in results_pager:
-            self.push(self.parent_client.my_get_sound(i.id),analysis_stat=None)
-            numSound = numSound+1
-            Bar.update(numSound+1)
-
-        # next iteration
-        while (numSound<nbSound):
-            count = 0
-            while 1: # care with this infinite loop...
-                count += 1
-                if count>10: # MAYBE SOME BUG HERE
-                    print 'could not get more sounds'
-                    break
-                try:
-                    results_pager = results_pager_last.next_page()
-                    if debugger:
-                        debugger.append(results_pager)
-                    break
-                except:
-                    exc_info = sys.exc_info()
-                    sleep(1)
-                    print exc_info
-            for i in results_pager:
-                self.push(self.parent_client.my_get_sound(i.id),analysis_stat=None)
-                numSound = numSound+1
-                Bar.update(numSound+1)
-            results_pager_last = results_pager
-
-    def retrieve_previews(self, new_folder = None):
-        folder = './previews/'
-        if new_folder is not None:
-            folder += new_folder
-            if not os.path.exists(folder):
-                os.makedirs(folder) 
-        nbSounds = len(self.sounds)
-        Bar = ProgressBar(nbSounds, LENGTH_BAR, 'Downloading previews')
-        Bar.update(0)
-        for i in range(nbSounds):
-            Bar.update(i+1)
-            self.sounds[i].retrieve_preview(folder)
-
-    def save(self, name):
-        """
-        Use this method to save a basket
-        Only ids and analysis name(s) are saved in a list [ [id1,...idn], [analysis, ...] ]
-        TODO : change it and save it as a dict (more flexible and stable regarding changes)
-        """
-        settings = SettingsSingleton()
-        if name and not (name in settings.local_baskets):
-            basket = [self.ids]
-            basket.append(self.analysis_names)
-            nameFile = 'baskets/' + name + '.json'
-            with open(nameFile, 'w') as outfile:
-                json.dump(basket, outfile)
-            settings.local_baskets.append(name)
-        else:
-            overwrite = raw_input(name + ' basket already exists. Do you want to replace it ? (y/n)')
-            if overwrite == 'y':
-                settings.local_baskets.remove(name)
-                self.save(name)
-            else:
-                print 'Basket was not saved'
-
-    def load(self,name):
-        """
-        Use thise method to load a basket from json files
-        """
-        self.sounds = []
-        settings = SettingsSingleton()
-        if name and name in settings.local_baskets:
-            nameFile = 'baskets/' + name + '.json'
-            with open(nameFile) as infile:
-                basket = simplejson.load(infile)
-            ids = basket[0]
-            nbSounds = len(ids)
-            for i in range(nbSounds):
-                self.ids.append(ids[i])
-            self.update_sounds()
-            self.analysis_names = basket[1]
-            self.update_analysis()
-        else:
-            print '%s basket does not exist' % name
-
-    def save_pickle(self, name):
-        settings = SettingsSingleton()
-        if name and not (name in settings.local_baskets_pickle):
-            self.parent_client.save_pickle(self, name, 'baskets_pickle/')
-            settings.local_baskets_pickle.append(name)
-        else:
-            overwrite = raw_input(name + ' basket already exists. Do you want to replace it ? (y/n)')
-            if overwrite == 'y':
-                self.parent_client.save_pickle(self, name, 'baskets_pickle/')
-            else:
-                print 'Basket was not saved'
 
     #________________________________________________________________________#
     # __________________________ Language tools _____________________________#
@@ -859,5 +754,34 @@ class Nlp:
 #            list_tags_in_tax.append(idx)
     
     # TODO : PUT THIS GRAPH THINGS IN AN OTHER CLASS
+
     
+
+LENGTH_BAR = 30
+class ProgressBar:
+    """
+    Progress bar
+    """
+    def __init__ (self, valmax, maxbar, title):
+        if valmax == 0:  valmax = 1
+        if maxbar > 200: maxbar = 200
+        self.valmax = valmax
+        self.maxbar = maxbar
+        self.title  = title
+        print ''
+
+    def update(self, val):
+        import sys
+        # format
+        if val > self.valmax: val = self.valmax
+
+        # process
+        perc  = round((float(val) / float(self.valmax)) * 100)
+        scale = 100.0 / float(self.maxbar)
+        bar   = int(perc / scale)
+
+        # render
+        out = '\r %20s [%s%s] %3d / %3d' % (self.title, '=' * bar, ' ' * (self.maxbar - bar), val, self.valmax)
+        sys.stdout.write(out)
+        sys.stdout.flush()
     

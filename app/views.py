@@ -1,16 +1,17 @@
-from flask import render_template, flash, redirect, url_for
+from flask import render_template, flash, redirect, url_for, jsonify, request
 from app import app
 from .forms import SearchForm
-import freesound
-from api_key import token
+import manager
+from clustering import *
+
 
 # INIT FREESOUND CLIENT API
-c = freesound.FreesoundClient()
-c.set_token(token)
+#c = manager.Client()
 
-@app.route("/")
-def hello():
-    return "Welcome to Python Flask App!"
+
+#@app.route("/")
+#def hello():
+#    return "Welcome to Python Flask App!"
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
@@ -35,3 +36,28 @@ def results(query):
     results = [create_embed(s.id) for s in sounds]
     return render_template('results.html',
                            results=results)
+
+# EX FROM WEB
+@app.route('/_add_numbers')
+def add_numbers():
+    a = request.args.get('a', 0, type=int)
+    b = request.args.get('b', 0, type=int)
+    return jsonify(result=a + b)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
+# EX FROM WEB
+@app.route('/_cluster')
+def cluster():
+    c = manager.Client()
+    query = request.args.get('query', None, type=str)
+    res = c.my_text_search(query=query, fields="tags,analysis", descriptors="lowlevel.mfcc.mean")
+    b = c.new_basket()
+    b.load_sounds(res)
+    cluster = Cluster(basket=b)
+    cluster.run()
+    return jsonify(result=cluster.ids_in_clusters)
+

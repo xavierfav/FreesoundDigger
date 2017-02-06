@@ -1,17 +1,25 @@
-from flask import render_template, flash, redirect, url_for, jsonify, request
+from flask import render_template, flash, redirect, url_for, jsonify, request, session, escape, abort
 from app import app
 from .forms import SearchForm
+import os
 import manager
 from clustering import *
 
-
+app.secret_key = 'azdazdzadza'
 # INIT FREESOUND CLIENT API
 c = manager.Client()
 
+@app.route('/')
+def home():
+    if not session.get('logged_in'):
+        return render_template('login.html')
+    else:
+        return logout()
 
-#@app.route("/")
-#def hello():
-#    return "Welcome to Python Flask App!"
+@app.route('/login', methods=['POST'])
+def do_admin_login():  
+    session['logged_in'] = True
+    return render_template('index.html')
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
@@ -22,6 +30,11 @@ def search():
     return render_template('search.html', 
                            title='Search',
                            form=form)
+
+@app.route("/logout")
+def logout():
+    session['logged_in'] = False
+    return home()
 
 embed_blocks = ['https://www.freesound.org/embed/sound/iframe/', '/simple/medium/']
 def create_embed(freesound_id):
@@ -44,12 +57,12 @@ def add_numbers():
     b = request.args.get('b', 0, type=int)
     return jsonify(result=a + b)
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+#@app.route('/')
+#def index():
+#    return render_template('index.html')
 
 
-# EX FROM WEB
+# When receiving query from ajax
 @app.route('/_cluster')
 def cluster():
     #c = manager.Client()
@@ -62,6 +75,7 @@ def cluster():
     dict_list = []
     for k in range(len(cluster.tags_oc)):
         dict_list.append([{"text":cluster.tags_oc[k][i][0], "size":60.0*cluster.tags_oc[k][i][1]/max([cluster.tags_oc[k][i][1] for i in range(len(cluster.tags_oc[k]))])} for i in range(len(cluster.tags_oc[k]))])
+    session['clusters'] = dict_list
     return jsonify(result=dict_list)
 
 @app.route('/cluster')

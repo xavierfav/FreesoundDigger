@@ -38,8 +38,18 @@ function createTagCloud(frequency_list, div_id) {
     
 }
 
-tags = null;
+var tags = null;
 $(function() {
+    function send_cluster(cluster_num) {
+    $.getJSON($SCRIPT_ROOT + '/_click', {
+      cluster_num: cluster_num,
+    }, function(data) {
+        console.log('worked')
+   });
+    return false;
+  }
+    
+    
   var submit_form = function(e) {
     $.getJSON($SCRIPT_ROOT + '/_cluster', {
       query: $('input[name="query"]').val(),
@@ -55,7 +65,9 @@ $(function() {
                 createTagCloud(tags[id_cluster], 'c'+id_cluster)
                 //console.log('div ' + id_cluster.toString())
                 var id = id_cluster.toString()
-                document.getElementById('c'+id_cluster).addEventListener('click', function(){console.log('click on div ' + id)}, false)  
+                document.getElementById('c'+id_cluster).addEventListener('click', function(){console.log('click on div ' + id)
+                                                                                            send_cluster(id);
+                                                                                            }, false)  
             }());
         }
       $('input[name=query]').focus().select();
@@ -71,5 +83,7 @@ $(function() {
   $('input[name=query]').focus();
 });
 
-
+$(function() {
+  
+});
 

@@ -81,3 +81,7 @@ def cluster():
 @app.route('/cluster')
 def display():
     return render_template('clusters2.html')
+
+@app.route('/_click')
+def click(nb):
+    print 'cluster: ' + nb

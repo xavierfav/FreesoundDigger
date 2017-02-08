@@ -83,5 +83,11 @@ def display():
     return render_template('clusters2.html')
 
 @app.route('/_click')
-def click(nb):
-    print 'cluster: ' + nb
+def click():
+    nb = request.args.get('cluster_num', None, type=int)
+    print 'cluster: ' + str(nb)
+    return jsonify(None)
+    
+@app.route('/tree')
+def tree():
+    return render_template('tree.html')

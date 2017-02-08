@@ -11,6 +11,7 @@ import sys, os
 import matplotlib.pyplot as plt
 from math import log10
 import copy
+from scipy.cluster.hierarchy import dendrogram
 
 # Disable print
 def blockPrint():
@@ -144,7 +145,7 @@ class Cluster:
         graph = graph or self.graph
         classes = com.best_partition(graph)
         self.nb_clusters = max(classes.values()) + 1
-        #dendrogram = com.generate_dendrogram(graph)
+        self.dendrogram = com.generate_dendrogram(graph)
         self.ids_in_clusters = [[e for e in classes.keys() if classes[e]==cl] for cl in range(self.nb_clusters)]
         print '\n >>> Graph Clustered <<<\n Found %d clusters'%self.nb_clusters
         

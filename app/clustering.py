@@ -1,8 +1,6 @@
 import manager
-from scipy.spatial.distance import pdist
-from sklearn.metrics.pairwise import euclidean_distances
-from sklearn.metrics.pairwise import cosine_similarity
-import webbrowser
+from sklearn.metrics.pairwise import euclidean_distances, cosine_similarity
+from sklearn.utils import shuffle
 import community.community_louvain as com
 import networkx as nx
 import numpy as np
@@ -11,7 +9,10 @@ import sys, os
 import matplotlib.pyplot as plt
 from math import log10
 import copy
-from scipy.cluster.hierarchy import dendrogram
+from gensim.models.word2vec import Word2Vec
+from sklearn.feature_extraction.text import TfidfVectorizer
+from collections import Counter, defaultdict
+import pickle
 
 # Disable print
 def blockPrint():
@@ -136,6 +137,7 @@ class Cluster:
                 similarity_matrix = self.text_similarity_matrix
             elif self.feature_type == 'acoustic':
                 similarity_matrix = self.acoustic_similarity_matrix
+        print similarity_matrix
         self.graph = self.create_knn_graph(similarity_matrix, k_nn)
         enablePrint()
         self.graph_knn = k_nn #save the k_nn parameters
@@ -260,3 +262,69 @@ def homogeneity(all_clusters, all_hidden_clusters):
     total = 1. - total
     return total
     
+    
+# __________________ W2V __________________ #
+class W2v:
+    # feature vectors amd similarity matrix with w2v
+    def __init__(self, name='Cluster Object', basket=None, size_w2v=20):
+        self.name = name
+        self.basket = basket
+        self.size_w2v = size_w2v
+        
+    def run(self):
+        X = np.array(self.basket.preprocessing_tag_description())
+        #X = shuffle(X, random_state=0)
+        #w2v_model = pickle.load(open('/home/xavier/Documents/dev/freesound-python/w2v_freesoundDb.pkl','rb'))
+        w2v_model = Word2Vec(X, size=self.size_w2v, window = 1000, min_count = 5, workers = 4, sg = 0)
+        term_vectors = {w: vec for w, vec in zip(w2v_model.index2word, w2v_model.syn0)}
+        tfidfEmbeddor = self.TfidfEmbeddingVectorizer(term_vectors).fit(X)
+        self.sound_vectors = tfidfEmbeddor.transform(X)
+        matrix = euclidean_distances(self.sound_vectors)
+        self.similarity_matrix = 1 - matrix/matrix.max()
+        cluster = Cluster(basket=self.basket)
+        cluster.text_similarity_matrix = self.similarity_matrix
+        cluster.feature_type = 'text'
+        return cluster
+    
+    class MeanEmbeddingVectorizer(object):
+        def __init__(self, word2vec):
+            self.word2vec = word2vec
+            self.dim = len(word2vec.itervalues().next())
+
+        def fit(self, X, y):
+            return self 
+
+        def transform(self, X):
+            return np.array([
+                np.mean([self.word2vec[w] for w in words if w in self.word2vec] 
+                        or [np.zeros(self.dim)], axis=0)
+                for words in X
+            ])
+
+    # and a tf-idf version of the same
+    class TfidfEmbeddingVectorizer(object):
+        def __init__(self, word2vec):
+            self.word2vec = word2vec
+            self.word2weight = None
+            self.dim = len(word2vec.itervalues().next())
+
+        def fit(self, X):
+            tfidf = TfidfVectorizer(analyzer=lambda x: x)
+            tfidf.fit(X)
+            # if a word was never seen - it must be at least as infrequent
+            # as any of the known words - so the default idf is the max of 
+            # known idf's
+            max_idf = max(tfidf.idf_)
+            self.word2weight = defaultdict(
+                lambda: max_idf, 
+                [(w, tfidf.idf_[i]) for w, i in tfidf.vocabulary_.items()])
+
+            return self
+
+        def transform(self, X):
+            return np.array([
+                    np.mean([self.word2vec[w] * self.word2weight[w]
+                             for w in words if w in self.word2vec] or
+                            [np.zeros(self.dim)], axis=0)
+                    for words in X
+                ]) 

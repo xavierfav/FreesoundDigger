@@ -9,7 +9,9 @@ from nltk.stem.porter import PorterStemmer
 from stop_words import get_stop_words
 from sklearn.metrics.pairwise import cosine_similarity
 from api_key import token
-
+from sklearn.feature_extraction.text import CountVectorizer
+import re
+from collections import defaultdict
 # TODO:add imports
 # create functions for geting metadata from db
 # create table for metadata (or use the freesound one)

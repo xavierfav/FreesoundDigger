@@ -56,9 +56,11 @@ $(function() {
     }, function(data) {
     $('#clusters').text(data.result);
         tags = data.result
+        $('.cluster_div').remove()
         for (id_cluster=0; id_cluster < tags.length; id_cluster++) {
             (function () {
                 var element = document.createElement("div");
+                element.className = 'cluster_div'
                 element.id = 'c'+id_cluster
                 //element.appendChild(document.createTextNode(''));
                 document.getElementById('cloudContainer').appendChild(element);

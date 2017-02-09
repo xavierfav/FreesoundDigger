@@ -67,10 +67,12 @@ def add_numbers():
 def cluster():
     #c = manager.Client()
     query = request.args.get('query', None, type=str)
-    res = c.my_text_search(query=query, fields="tags,analysis", descriptors="lowlevel.mfcc.mean")
+    res = c.my_text_search(query=query, fields="tags,analysis,description", descriptors="lowlevel.mfcc.mean")
     b = c.new_basket()
     b.load_sounds(res)
-    cluster = Cluster(basket=b)
+    #cluster = Cluster(basket=b)
+    w2v = W2v(basket=b)
+    cluster = w2v.run()
     cluster.run(k_nn=res.count/50)
     dict_list = []
     for k in range(len(cluster.tags_oc)):

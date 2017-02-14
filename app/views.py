@@ -101,3 +101,11 @@ def tree():
 @app.route('/paginator')
 def page():
     return render_template('paginator.html')
+
+@app.route('/_get_sound_id')
+def send_sound_ids():
+    page = request.args.get('page', None, type=int)
+    cluster_id = request.args.get('cluster_id', None, type=int)
+    print page, cluster_id
+    ids = [339812, 87713, 339812, 87713]
+    return jsonify(list_ids=ids)

@@ -32,10 +32,7 @@ function createTagCloud(frequency_list, div_id) {
         .rotate(0)
         .fontSize(function(d) { return d.size; })
         .on("end", draw)
-        .start();
-    
-
-    
+        .start();  
 }
 
 var tags = null;
@@ -68,9 +65,10 @@ $(function() {
                 createTagCloud(tags[id_cluster], 'c'+id_cluster)
                 //console.log('div ' + id_cluster.toString())
                 var id = id_cluster.toString()
-                document.getElementById('c'+id_cluster).addEventListener('click', function(){console.log('click on div ' + id)
-                                                                                            send_cluster(id);
-                                                                                            }, false)  
+                document.getElementById('c'+id_cluster).addEventListener('click', function(){
+                    console.log('click on div ' + id)
+                    send_cluster(id);
+                }, false)  
             }());
         }
       $('input[name=query]').focus().select();
@@ -89,9 +87,3 @@ $(function() {
 $(function() {
   
 });
-
-function PlaySound(path) {
-  var audioElement = document.createElement('audio');
-  audioElement.setAttribute('src', path);
-  audioElement.play();
-}

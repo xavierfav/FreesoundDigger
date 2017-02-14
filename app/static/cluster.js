@@ -44,7 +44,8 @@ $(function() {
     $.getJSON($SCRIPT_ROOT + '/_click', {
       cluster_num: cluster_num,
     }, function(data) {
-        console.log('worked')
+        previews = data.result;
+        console.log(previews)
    });
     return false;
   }
@@ -89,3 +90,8 @@ $(function() {
   
 });
 
+function PlaySound(path) {
+  var audioElement = document.createElement('audio');
+  audioElement.setAttribute('src', path);
+  audioElement.play();
+}

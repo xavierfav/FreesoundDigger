@@ -19,7 +19,8 @@ def home():
 @app.route('/login', methods=['POST'])
 def do_admin_login():  
     session['logged_in'] = True
-    return render_template('index.html')
+    #return render_template('index.html')
+    return render_template('paginator.html')
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
@@ -67,13 +68,15 @@ def add_numbers():
 def cluster():
     #c = manager.Client()
     query = request.args.get('query', None, type=str)
-    res = c.my_text_search(query=query, fields="tags,analysis,description", descriptors="lowlevel.mfcc.mean")
+    res = c.my_text_search(query=query, fields="tags,analysis,description,previews", descriptors="lowlevel.mfcc.mean")
     b = c.new_basket()
     b.load_sounds(res)
-    #cluster = Cluster(basket=b)
-    w2v = W2v(basket=b)
-    cluster = w2v.run()
+    cluster = Cluster(basket=b)
+    #w2v = W2v(basket=b)
+    #cluster = w2v.run()
     cluster.run(k_nn=res.count/50)
+    previews_list = [[s.previews.preview_lq_ogg for s in basket.sounds] for basket in cluster.cluster_baskets]
+    session['previews'] = previews_list[0]
     dict_list = []
     for k in range(len(cluster.tags_oc)):
         dict_list.append([{"text":cluster.tags_oc[k][i][0], "size":60.0*cluster.tags_oc[k][i][1]/max([cluster.tags_oc[k][i][1] for i in range(len(cluster.tags_oc[k]))])} for i in range(len(cluster.tags_oc[k]))])
@@ -88,8 +91,13 @@ def display():
 def click():
     nb = request.args.get('cluster_num', None, type=int)
     print 'cluster: ' + str(nb)
-    return jsonify(None)
+    print session.get('previews')
+    return jsonify(result=session.get('previews'))
     
 @app.route('/tree')
 def tree():
     return render_template('tree.html')
+
+@app.route('/paginator')
+def page():
+    return render_template('paginator.html')

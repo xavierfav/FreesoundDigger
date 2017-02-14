@@ -1,0 +1,33 @@
+.frame {
+  width: 640px;
+  height: 280px;
+  padding: 0;
+  border: 1px dotted gray;
+}
+
+.frame .slidee {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  list-style: none;
+}
+
+.frame .slidee li {
+  float: left;
+  margin: 0 5px 0 0;
+  padding: 0;
+  width: 481px;
+  height: 100%;
+}
+
+.scrollbar {
+  width: 640px;
+  height: 5px;
+}
+
+.scrollbar .handle {
+  width: 100px;
+  /* overriden if dynamicHandle: 1 */
+  height: 100%;
+  background: #888;
+}

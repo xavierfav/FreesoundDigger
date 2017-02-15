@@ -1,13 +1,28 @@
 from flask import render_template, flash, redirect, url_for, jsonify, request, session, escape, abort
 from app import app
+from flask_session import Session
 from .forms import SearchForm
 import os
 import manager
 from clustering import *
 
-app.secret_key = 'azdazdzadza'
+
+app.secret_key = 'azdazdzwefwefadza'
 # INIT FREESOUND CLIENT API
 c = manager.Client()
+
+SESSION_TYPE = 'redis'
+app.config.from_object(__name__)
+Session(app)
+
+@app.route('/set/')
+def set():
+    session['key'] = str({'list':range(10000)})
+    return 'ok'
+
+@app.route('/get/')
+def get():
+    return session.get('key', 'not set')
 
 @app.route('/')
 def home():
@@ -77,6 +92,7 @@ def cluster():
     cluster.run(k_nn=res.count/50)
     previews_list = [[s.previews.preview_lq_ogg for s in basket.sounds] for basket in cluster.cluster_baskets]
     session['previews'] = previews_list[0]
+    session['ids'] = [[s.id for s in basket.sounds] for basket in cluster.cluster_basket]
     dict_list = []
     for k in range(len(cluster.tags_oc)):
         dict_list.append([{"text":cluster.tags_oc[k][i][0], "size":60.0*cluster.tags_oc[k][i][1]/max([cluster.tags_oc[k][i][1] for i in range(len(cluster.tags_oc[k]))])} for i in range(len(cluster.tags_oc[k]))])
@@ -102,10 +118,24 @@ def tree():
 def page():
     return render_template('paginator.html')
 
+@app.route('/_query')
+def query_cluster():
+    query = request.args.get('query', None, type=str)
+    res = c.my_text_search(query=query, fields="tags,analysis,description,previews", descriptors="lowlevel.mfcc.mean")
+    b = c.new_basket()
+    b.load_sounds(res)
+    cluster = Cluster(basket=b)
+    #w2v = W2v(basket=b)
+    #cluster = w2v.run()
+    cluster.run(k_nn=res.count/50)
+    session['ids'] = dict([(basket_id, [s.id for s in cluster.cluster_basket[basket_id].sounds]) for basket_id in range(len(cluster.cluster_basket))])
+    return jsonify(result=None)
+
 @app.route('/_get_sound_id')
 def send_sound_ids():
     page = request.args.get('page', None, type=int)
     cluster_id = request.args.get('cluster_id', None, type=int)
     print page, cluster_id
+    print session.get('ids')
     ids = [339812, 87713, 339812, 87713]
     return jsonify(list_ids=ids)

@@ -70,15 +70,50 @@ $(function(){
   slyelement.obj.on('move cycle', function () {
 		if (this.pos.dest > this.pos.end - 40 && STATE == 'open' ) {
             close()
+            // here request the items for the list
             request_sound_ids(1,2);
 			this.reload();
-            console.log('reload')
-            
+            console.log('reload')            
 		}
 	});
   slyelement.obj.init();
+      var submit_form = function(e) {
+    $.getJSON($SCRIPT_ROOT + '/_cluster', {
+      query: $('input[name="query"]').val(),
+    }, function(data) {
+    $('#clusters').text(data.result);
+        tags = data.result
+        $('.cluster_div').remove()
+        for (id_cluster=0; id_cluster < tags.length; id_cluster++) {
+            (function () {
+                var element = document.createElement("div");
+                element.className = 'cluster_div'
+                element.id = 'c'+id_cluster
+                //element.appendChild(document.createTextNode(''));
+                document.getElementById('cloudContainer').appendChild(element);
+                createTagCloud(tags[id_cluster], 'c'+id_cluster)
+                //console.log('div ' + id_cluster.toString())
+                var id = id_cluster.toString()
+                document.getElementById('c'+id_cluster).addEventListener('click', function(){
+                    console.log('click on div ' + id)
+                    send_cluster(id);
+                }, false)  
+            }());
+        }
+      $('input[name=query]').focus().select();
+    });
+    return false;
+  };
+  $('a#calculate').bind('click', submit_form);
+  $('input[type=text]').bind('keydown', function(e) {
+    if (e.keyCode == 13) {
+      submit_form(e);
+    }
+  });
+  $('input[name=query]').focus();
 });
 
 $(window).resize(function(e) {
   slyelement.obj.reload();
 });
+

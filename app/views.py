@@ -15,14 +15,6 @@ SESSION_TYPE = 'redis'
 app.config.from_object(__name__)
 Session(app)
 
-@app.route('/set/')
-def set():
-    session['key'] = str({'list':range(10000)})
-    return 'ok'
-
-@app.route('/get/')
-def get():
-    return session.get('key', 'not set')
 
 @app.route('/')
 def home():

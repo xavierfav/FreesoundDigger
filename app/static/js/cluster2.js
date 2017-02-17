@@ -44,7 +44,7 @@ function change_state_to_open() {
     STATE = 'open'
 }
 
-function close() {
+function close_gate() {
     change_state_to_close();
     setTimeout(change_state_to_open, 500)
     // care with this timer if the server is slower than 0.5sec to respond...
@@ -56,6 +56,7 @@ function request_sound_ids(page, cluster_id) {
         page: page,
         cluster_id: cluster_id,  
     }, function(data) {
+        console.log(slyelement.obj.pos.dest)
         add_embeds(data.list_ids, cluster_id)
         console.log(data.list_ids)
         slyelement.obj.reload()
@@ -66,14 +67,13 @@ function request_sound_ids(page, cluster_id) {
 
 
 $(function(){
-  slyelement.obj = new Sly($(slyelement.el), slyelement.options);
-  slyelement.obj.on('move cycle', function () {
-		if (this.pos.dest > this.pos.end - 40 && STATE == 'open' ) {
-            close()
+    slyelement.obj = new Sly($(slyelement.el), slyelement.options);
+    slyelement.obj.on('move cycle', function () {
+		if (this.pos.dest > this.pos.end - 40 && this.pos.dest > 0 && STATE == 'open' ) {
+            close_gate()
             // here request the items for the list
             request_sound_ids(1,2);
-			this.reload();
-            console.log('reload')            
+			this.reload();           
 		}
 	});
   slyelement.obj.init();

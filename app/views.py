@@ -75,21 +75,18 @@ def add_numbers():
 def cluster():
     #c = manager.Client()
     query = request.args.get('query', None, type=str)
-    res = c.my_text_search(query=query, fields="tags,analysis,description,previews", descriptors="lowlevel.mfcc.mean")
+    res = c.my_text_search(query=query, fields='tags')
     b = c.new_basket()
-    b.load_sounds(res)
+    b.load_sounds_(res)
     cluster = Cluster(basket=b)
     #w2v = W2v(basket=b)
     #cluster = w2v.run()
-    cluster.run(k_nn=res.count/50)
-    previews_list = [[s.previews.preview_lq_ogg for s in basket.sounds] for basket in cluster.cluster_baskets]
-    session['previews'] = previews_list[0]
-    session['ids'] = [[s.id for s in basket.sounds] for basket in cluster.cluster_basket]
-    dict_list = []
-    for k in range(len(cluster.tags_oc)):
-        dict_list.append([{"text":cluster.tags_oc[k][i][0], "size":60.0*cluster.tags_oc[k][i][1]/max([cluster.tags_oc[k][i][1] for i in range(len(cluster.tags_oc[k]))])} for i in range(len(cluster.tags_oc[k]))])
-    session['clusters'] = dict_list
-    return jsonify(result=dict_list)
+    cluster.run(k_nn=res.count/20, feature='fusion')
+    #previews_list = [[s.previews.preview_lq_ogg for s in basket.sounds] for basket in cluster.cluster_baskets]
+    #session['previews'] = previews_list[0]
+    session['ids'] = [[s.id for s in basket.sounds] for basket in cluster.cluster_baskets]
+    ids_in_clusters = [[s.id for s in cluster.cluster_baskets[basket_id].sounds[:5]] for basket_id in range(len(cluster.cluster_baskets))]
+    return jsonify(result=ids_in_clusters)
 
 @app.route('/cluster')
 def display():
@@ -113,21 +110,22 @@ def page():
 @app.route('/_query')
 def query_cluster():
     query = request.args.get('query', None, type=str)
-    res = c.my_text_search(query=query, fields="tags,analysis,description,previews", descriptors="lowlevel.mfcc.mean")
+    res = c.my_text_search(query=query, fields='tags')
     b = c.new_basket()
-    b.load_sounds(res)
+    b.load_sounds_(res)
     cluster = Cluster(basket=b)
     #w2v = W2v(basket=b)
     #cluster = w2v.run()
-    cluster.run(k_nn=res.count/50)
+    cluster.run(k_nn=res.count/10, feature='fusion')
     session['ids'] = dict([(basket_id, [s.id for s in cluster.cluster_basket[basket_id].sounds]) for basket_id in range(len(cluster.cluster_basket))])
-    return jsonify(result=None)
+    ids_in_clusters = dict([[s.id for s in cluster.cluster_basket[basket_id].sounds[:5]] for basket_id in range(2)])#   range(len(cluster.cluster_basket))])
+    return jsonify(result=ids_in_clusters)
 
 @app.route('/_get_sound_id')
 def send_sound_ids():
     page = request.args.get('page', None, type=int)
     cluster_id = request.args.get('cluster_id', None, type=int)
-    print page, cluster_id
-    print session.get('ids')
-    ids = [339812, 87713, 339812, 87713]
+    #print page, cluster_id
+    ids_in_clusters = session.get('ids')
+    ids = [idx for idx in ids_in_clusters[cluster_id][page*5:page*5+5]]
     return jsonify(list_ids=ids)

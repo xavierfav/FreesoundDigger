@@ -27,8 +27,8 @@ def blockPrint():
 def enablePrint():
     sys.stdout = sys.__stdout__
 
-#text_features = pickle.load(open('text_features_FS_lda50_10kTags.pkl', 'rb'))
-text_features = pickle.load(open('text_features_FS_lda200_allTags.pkl', 'rb'))
+text_features = pickle.load(open('text_features_FS_lda50_10kTags.pkl', 'rb'))
+#text_features = pickle.load(open('text_features_FS_lda200_allTags.pkl', 'rb'))
 #text_features = pickle.load(open('text_features_FS.pkl', 'rb'))
 #text_features = pickle.load(open('text_features_US8K_ESC50.pkl', 'rb')) 
 

@@ -107,6 +107,8 @@ function add_sly_obj(cluster_id, sound_ids) {
 }
 
 function cluster_result(ids_in_clusters) {
+    // CLEAN PAGE AND LIST OF OBJECTS
+    
      for (cluster_id=0; cluster_id < ids_in_clusters.length; cluster_id++) {
          // add all sly elements
          //console.log(cluster_id)
